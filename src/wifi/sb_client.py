@@ -1,38 +1,64 @@
 import socket
+import sys
 
 # NOTE: Check IP address when switching over to Wi-Fi.
-host = '192.168.1.168'
-
 # NOTE: Test if this has to be the same port as the one
 # 		on the server side.
-port = 5560
+def DefineSocketInfo():
+	host = '192.168.1.29'
+	port = 5560
+	return host, port
 
-# Socket set up for TCP packets.
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((host,port))
-print("Connection to server was successful")
+# DESC: Set up the client-side socket for TCP packets
+# RETURNS: socket.socket
+def SetupClient(socket_data_tuple):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.connect(socket_data_tuple)
+	print("Connection to server was successful")
+	return sock
 
-while True:
-	command = input("Enter your command: ")
+# DESC: Decodes the command to be sent to the server
+#		and returns the response.
+# RETURNS: boolean to break or not
+def DataTransfer(command):
+	
+	# Determine if the data transfer should continue or 
+	# if the socket should close down
+	exit_loop = False
 	
 	# Decode the command ------------------
-	
 	# Send the EXIT request to other end
 	# and exit the connection.
 	if command == 'EXIT':
 		s.send(str.encode(command))
-		break
+		exit_loop = True
 		
 	# Send KILL command to shut down the server.
 	# Same behavior on client side.
 	elif command == 'KILL':
 		s.send(str.encode(command))
-		break
+		exit_loop = True
 		
 	# If other command, just send the command
 	# and wait for the response.
 	s.send(str.encode(command))
 	reply = s.recv(1024)
 	print(reply.decode('utf-8'))
+	return exit_loop
+
+# ============================ STANDALONE ================================
+if __name__ == "__main__":
+
+	print(sys.version)
+	sock_data = DefineSocketInfo()
+	exit_loop = False # for infinite data transfer once connection is made
 	
-s.close()
+	# After host and port are determined, 
+	s = SetupClient(sock_data)
+		
+	while ~exit_loop:
+		instruction = input("Enter your command: ")
+		exit_loop = DataTransfer(instruction)
+	
+	# If the loop has exited, close the socket.
+	s.close()
