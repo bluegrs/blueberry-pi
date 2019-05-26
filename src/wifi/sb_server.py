@@ -3,8 +3,16 @@
 # simple string messages using TCP/IP. The client can choose to
 # disconnect at any time.
 
-# ===================== IMPORT MODULES ====================
+# ==============================================================
+# ==============================================================
+# ==                                                          ==
+# ==                    IMPORT DEPENDENCIES             
+# ==                                                          ==
+# ==============================================================
+# ==============================================================
 import socket
+import sys
+from timeit import default_timer as timer
 
 # ====================== CACHED DATA ======================
 storedValue = "SERVER: Test String"
@@ -63,8 +71,11 @@ def DataTransfer(connection, sock):
     while True:
 
         # RECEIVE THE DATA ---------------------------------
+        #start = timer()
         data = connection.recv(1024)
         data = data.decode('utf-8')
+        #end = timer()
+        #print("Data Receive/Decode time(s): " + (end - start))
 
         # Split the data to separate the command from the
         # rest of the data.
@@ -91,24 +102,34 @@ def DataTransfer(connection, sock):
         elif command == 'KILL':
             print("Server shutting down..")
             sock.close()
+            break
 
         # Handle unknown commands.
         else:
             reply = 'Unknown command..'
 
         # SEND DATA TO CLIENT --------------------------------
+        #start = timer()
         connection.sendall(str.encode(reply))
+        #end = timer()
         print("Data has been send..")
+        #print("Data Encode/Transfer time(s): " + (end - start))
 
     # If the while loop is exited by the KILL/EXIT commands,
     # close the second communication socket.
     connection.close()
 
 
-# ======================== STANDALONE ========================
-
+# ==============================================================
+# ==============================================================
+# ==                                                          ==
+# ==                    STAND ALONE             
+# ==                                                          ==
+# ==============================================================
+# ==============================================================
 if __name__ == "__main__":
 
+    print(sys.version)
     s = SetupServer()
 
     while True:
