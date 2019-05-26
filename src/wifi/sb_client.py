@@ -42,8 +42,10 @@ def DataTransfer(command):
 	# If other command, just send the command
 	# and wait for the response.
 	s.send(str.encode(command))
-	reply = s.recv(1024)
-	print(reply.decode('utf-8'))
+	if not exit_loop:
+		reply = s.recv(1024)
+		print(reply.decode('utf-8'))
+	
 	return exit_loop
 
 # ============================ STANDALONE ================================
@@ -56,9 +58,11 @@ if __name__ == "__main__":
 	# After host and port are determined, 
 	s = SetupClient(sock_data)
 		
-	while ~exit_loop:
+	while not exit_loop:
 		instruction = input("Enter your command: ")
 		exit_loop = DataTransfer(instruction)
+		print(str(exit_loop))
 	
 	# If the loop has exited, close the socket.
 	s.close()
+	print("SOCKET CLOSED..")
