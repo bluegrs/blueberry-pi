@@ -16,5 +16,7 @@ L3GD20: 3-axis gyroscope
 
 ![software_modules](https://user-images.githubusercontent.com/40513675/58389317-849c5b80-7ff7-11e9-9c26-4210e3a6e92f.jpg)
 
+[**Gliffy Generator Location: SW/HW Block Diagram**](https://github.com/bluegrs/blueberry-pi/tree/server/docs/gliffy)
+
 ## Contributors
 Daniel Hamilton [**(@sweatpantsdanny)**](https://github.com/sweatpantsdanny)
