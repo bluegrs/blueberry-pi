@@ -8,6 +8,17 @@ LSM303DLHC: 3-axis accelerometer and 3-axis magnetometer
 
 L3GD20: 3-axis gyroscope
 
+## Dependencies
+[**Python3**](https://www.python.org/downloads/)
+
+[**Adafruit_CircuitPython_BusDevice**](https://github.com/adafruit/Adafruit_CircuitPython_BusDevice)
+
+[**Adafruit CircuitPython**](https://github.com/adafruit/circuitpython)
+
+[**Adafruit CircuitPython FXOS8700**](https://github.com/adafruit/Adafruit_CircuitPython_FXOS8700)
+
+[**Adafruit CircuitPython FXAS21002C**](https://github.com/adafruit/Adafruit_CircuitPython_FXAS21002C)
+
 ## SW/HW Block Diagram
 
 **Client-side:** The Raspberry-Pi interfaces with the 9-DOF sensor pack through the Client-side Data Acquisition processes and stores the received data into the respected sensor FIFOs to be accessed by the Data Formatter Process. The Data Formatter Process will frame the data according to the determined protocol and send the data to the server using the Wi-Fi module.
