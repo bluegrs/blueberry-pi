@@ -17,33 +17,67 @@ import sys
 import time
 from ipc import IPCServer as shareable
 
-def sequential():
+# +----------+----------+----------+----------+
+# |         MULTITHREAD SEQUENTIAL            |
+# +----------+----------+----------+----------+
+def multithread_sequential():
     termPrint("Running sequential test.")
     reader = shareable(6000)
 
     # wait for .1 seconds just to make sure the
     # data is not being accessed by the writer anymore.
-    time.sleep(.1)
+    time.sleep(.5)
     rx = reader.Read()
 
-    termPrint("Received " + str(rx) + " from socket")
-    print("EOP")
+    termPrint("Received '" + str(rx) + "' from resource")
+    termPrint("EOP")
 
-def concurrent():
+# +----------+----------+----------+----------+
+# |         MULTITHREAD CONCURRENT            |
+# +----------+----------+----------+----------+
+def multithread_concurrent():
     termPrint("Running concurrent test.")
+
+    reader = shareable(6000)
+    rx = None
+
+    # wait for .1 seconds just to make sure the
+    # data is not being accessed by the writer anymore.
+    while True:
+
+        # Read infinitely until data runs out
+        try:
+            rx = reader.Read()
+            termPrint("Received '" + str(rx) + "' from resource")
+
+        # EOF reached
+        except:
+            break
+
     termPrint("EOP")
 
 def termPrint(message):
     print("*** READER *** : " + message)
 
+# +----------+----------+----------+----------+
+# |                    MAIN                   |
+# +----------+----------+----------+----------+
 if __name__ == "__main__":
-    request = sys.argv[1]
+    method = sys.argv[1]
+    proc = sys.argv[2]
 
-    if request == '-seq':
-        sequential()
+    # determine if the requested method is
+    # multithreaded, socket, etc..
+    if method == '-multithread':
 
-    elif request == '-con':
-        concurrent()
+        # determine if the user is requesting
+        # to test the sequential or concurrent
+        # operation.
+        if proc == '-seq':
+            multithread_sequential()
+
+        else:
+            multithread_concurrent()
 
     else:
-        termPrint("Request must be -seq or -con")
+        termPrint(str(method) + " " + str(proc) + " does not exist yet")

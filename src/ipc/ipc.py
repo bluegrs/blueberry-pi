@@ -4,12 +4,6 @@ The server can accept 1 client connection and send/receive
 simple string messages using TCP/IP. The client can choose to
 disconnect at any time.
 
-MESSAGES SENT:
-
-(field)   (bytes num)    (desc)
-header     4              Number of data bytes following the header
-data       1 - int max    Protocol has not been determined yet
-
 TODO:
 ~ Test if there can be multiple clients communicating to this
     server, or if there is a max of 2 participants.
@@ -21,60 +15,32 @@ import struct
 from multiprocessing.connection import Listener
 from multiprocessing.connection import Client
 
-bytepack = struct.pack('>I', 12345)
-message = struct.unpack('>I', bytepack)
-print(str(message))
-
 '''
 SUMMARY
-Parse through the data received from the socket
-and return the variable amount of data.
+Receive data from the socket.
+
+UPDATES:
+~ Find a way to control the amount of data we receive
+    so we can develop a more controlled protocol for
+    parsing through the data. In the future, the following
+    message protocol may be more practical...
+
+    (field)   (bytes num)    (desc)
+    header     4              Number of data bytes following the header
+    data       1 - int max    Protocol has not been determined yet
 
 OUTPUTS
 (byte string) Data received from the socket.
 '''
 def read_msg(sock):
 
-    # Try to pull a byte from the socket
-    # and return status = false if no connection.
-    rawMsgLen = recv_all(sock, 4)
-    if not rawMsgLen:
+    # Try to read data from the socket and
+    # return None if there is no data.
+    rx = sock.recv()
+    if not rx:
         return None
-
-    # if unparsed data was pulled from the socket,
-    # read the number of bytes that the header
-    # says there was in big-endian network order.
-    msgLen = struct.unpack('>I', rawMsgLen)[0]
     
-    return recv_all(sock, msgLen) 
-
-'''
-SUMMARY
-Receive a variable number of bytes from the
-socket as a byte string.
-
-OUTPUTS
-data - (byte string) Data received from the socket.
-'''
-def recv_all(sock, num_bytes):
-    
-    # Receive variable number of TCP packets from the
-    # socket and store into the byte string "data"
-    data = b''
-    while len(data) < num_bytes:
-        packet = sock.recv(num_bytes - len(data))
-
-        # if no data was received from the socket
-        # return an empty packet
-        if not packet:
-            return None
-
-        # otherwise, add to the byte string
-        data += packet
-
-    # Once all the data  has been received,
-    # exit the loop and return the data.
-    return data
+    return rx
 
 '''
 SUMMARY
@@ -84,13 +50,7 @@ INPUTS
 msg - (byte) data to send out to the socket.
 '''
 def write_msg(sock, msg):
-
-    # package the message with a header indicating
-    # that the length of the message (up to 4 bytes)
-    # ordered in big-endian network byte order (>).
-    # Then, send the data to the socket.
-    msg = struct.pack('>I', len(msg)) + msg
-    sock.sendall(msg)
+    sock.send(msg)
 
 # ==============================================================
 # ==============================================================
