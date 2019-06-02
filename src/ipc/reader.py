@@ -15,7 +15,7 @@ classes concurrently (during OS operation).
 '''
 import sys
 import time
-from ipc import IPCListener as shareable
+from ipc import IPCServer as shareable
 
 def sequential():
     termPrint("Running sequential test.")
@@ -24,9 +24,9 @@ def sequential():
     # wait for .1 seconds just to make sure the
     # data is not being accessed by the writer anymore.
     time.sleep(.1)
-    rx = reader.ReadByte()
+    rx = reader.Read()
 
-    termPrint("Received " + rx + " from socket")
+    termPrint("Received " + str(rx) + " from socket")
     print("EOP")
 
 def concurrent():
@@ -37,7 +37,6 @@ def termPrint(message):
     print("*** READER *** : " + message)
 
 if __name__ == "__main__":
-    print(sys.version)
     request = sys.argv[1]
 
     if request == '-seq':
@@ -46,5 +45,5 @@ if __name__ == "__main__":
     elif request == '-con':
         concurrent()
 
-    else
+    else:
         termPrint("Request must be -seq or -con")

@@ -14,14 +14,14 @@ when separate python instances are trying to read and write to these
 classes concurrently (during OS operation).
 '''
 import sys
-from ipc import IPCSpeaker as shareable
+from ipc import IPCClient as shareable
 
 def sequential():
-    termPrint("Running sequential test."
+    termPrint("Running sequential test.")
 
     # Send the test data to the reader
     writer = shareable(6000)
-    writer.WriteByte('H')
+    writer.Write('hello world')
               
     print("EOP")
 
@@ -33,7 +33,6 @@ def termPrint(message):
     print("*** WRITER *** : " + message)
 
 if __name__ == "__main__":
-    print(sys.version)
     request = sys.argv[1]
 
     if request == '-seq':
@@ -42,5 +41,5 @@ if __name__ == "__main__":
     elif request == '-con':
         concurrent()
 
-    else
+    else:
         termPrint("Request must be -seq or -con")
