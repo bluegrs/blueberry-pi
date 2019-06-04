@@ -16,6 +16,7 @@ classes concurrently (during OS operation).
 import sys
 import time
 from ipc import IPCServer as shareable
+from ipc import SocketServer as shareable2
 
 # +----------+----------+----------+----------+
 # |         MULTITHREAD SEQUENTIAL            |
@@ -60,6 +61,25 @@ def termPrint(message):
     print("*** READER *** : " + message)
 
 # +----------+----------+----------+----------+
+# |              SOCKET CONCURRENT            |
+# +----------+----------+----------+----------+
+def socket_sequential():
+    termPrint("Running sequential test.")
+    reader = shareable2(6000)
+
+    # wait for .1 seconds just to make sure the
+    # data is not being accessed by the writer anymore.
+    time.sleep(.5)
+    rx = reader.Read()
+
+    termPrint("Received '" + str(rx) + "' from resource")
+    termPrint("EOP")
+
+def socket_concurrent():
+    termPrint("Running concurrent test.")
+    termPrint("EOP")
+
+# +----------+----------+----------+----------+
 # |                    MAIN                   |
 # +----------+----------+----------+----------+
 if __name__ == "__main__":
@@ -78,6 +98,17 @@ if __name__ == "__main__":
 
         else:
             multithread_concurrent()
+
+    elif method == '-socket':
+
+        # determine if the user is requesting
+        # to test the sequential or concurrent
+        # operation.
+        if proc == '-seq':
+            socket_sequential()
+
+        else:
+            socket_concurrent()
 
     else:
         termPrint(str(method) + " " + str(proc) + " does not exist yet")
