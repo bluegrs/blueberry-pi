@@ -20,4 +20,13 @@ echo "RUNNING SEQUENTIAL MULTITHREAD VERSION"
 python3 writer.py -multithread -seq &
 python3 reader.py -multithread -seq &
 
+# +----------+----------+----------+----------+
+# |	    	 SOCKET SEQUENTIAL METHOD         |
+# +----------+----------+----------+----------+
+echo "RUNNING SEQUENTIAL SOCKET VERSION"
+
+# add all background processes here
+python3 writer.py -socket -seq &
+python3 reader.py -socket -seq &
+
 exit
