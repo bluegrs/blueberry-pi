@@ -6,8 +6,7 @@ asks to receive sensor data from the controller.
 
 import sys
 import config as cfg
-import nxp
-from wifi import wifi_client as client
+from wifi.sb_client import wifi_client as client
 
 # +----------+----------+----------+----------+
 # |            MAIN (NON-THREADED)            |
@@ -16,15 +15,14 @@ def main_single():
     print("Running Blueberry-Pi (NON-THREADED).")
     
     wifi = client(cfg.WIFI_PORT)
+    connOpen = True
 
     # Always listen for a connection to the client.
-    while True:
-        try:
-            server.SetupConnection()
-            close = False
+    while connOpen:
+        message = 'READ'
+        connOpen = wifi.DataTxToHost(message)
 
-            while not close:
-                close = server.DataRxFromClient()
+    print("Connection to server closed.")
         
         
 # +----------+----------+----------+----------+

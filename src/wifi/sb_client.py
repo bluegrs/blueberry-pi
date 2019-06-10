@@ -35,7 +35,7 @@ class wifi_client:
 	
 	def __init__(self, port):
 		
-		self.host = '192.168.1.29'
+		self.host = '192.168.1.26'
 		self.port = port
 		self.sock_conn = None
 		
