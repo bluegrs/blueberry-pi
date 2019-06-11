@@ -8,27 +8,11 @@ NOTES:
 As shown in the MAIN() example located at the bottom of the file,
 the only functions required to setup the server are SetupConnection
 and DataRxFromClient.
-
-TODO:
-~ This module should allow more than 1 device to connect so that
-    the simulation/video game it is connected to will be able to
-    use multiple blueberry-pi's.
-~ The data received should be transferrable to an external resource
-    such as a FIFO
-~ It would be preferable if the data being sent did not have to be
-    encoded and decoded in favor of saving CPU time and minimizing
-    the amount of data that has to be transferred over wifi.
 '''
 
-# ==============================================================
-# ==============================================================
-# ==                                                          ==
-# ==                    IMPORT DEPENDENCIES             
-# ==                                                          ==
-# ==============================================================
-# ==============================================================
 import socket
 import sys
+import json
 
 class wifi_server:
 
@@ -43,13 +27,9 @@ class wifi_server:
         # Setup the socket from the port number provided
         self.__SetupServer()
 
-    # ==============================================================
-    # ==============================================================
-    # ==                                                          ==
-    # ==                    PRIVATE METHODS          
-    # ==                                                          ==
-    # ==============================================================
-    # ==============================================================
+    # +----------+----------+----------+----------+
+    # |               PRIVATE METHODS             |
+    # +----------+----------+----------+----------+
     # RETURNS: tuple for host, port info
     def __GetServerSocketInfo(self):
         return self.host, self.port
@@ -98,13 +78,9 @@ class wifi_server:
         reply = message[1]
         return reply
 
-    # ==============================================================
-    # ==============================================================
-    # ==                                                          ==
-    # ==                      PUBLIC METHODS          
-    # ==                                                          ==
-    # ==============================================================
-    # ==============================================================
+    # +----------+----------+----------+----------+
+    # |               PUBLIC METHODS             |
+    # +----------+----------+----------+----------+
     # DESC: This function allows 1 client to connect at a time.
     def SetupConnection(self):
         # Allows 1 connection.
@@ -185,6 +161,25 @@ class wifi_server:
         # if the client has requested to exit OR kill the server
         return closeConnection
 
+class server(wifi_server):
+
+    def __init__(self, port):
+        wifi_server.__init__(self, port)
+
+    ''' SUMMARY: Receive a request from the user - cfg.ACCEL, cfg.GRYO, cfg.MAG'''
+    def receive(self):
+        req = self.sock_conn.recv(1)
+        return req.decode('utf-8')
+
+    def respond(self, msg):
+
+        # First send the length of the message, then send the
+        # message. The client will be able to read the length
+        # and then pull the appropriate amount of data.
+        encoded = msg.encode('utf-8')
+        self.sock_conn.send(str(len(encoded)).encode('utf-8'))
+        self.sock_conn.send(encoded)
+
 # ==============================================================
 # ==============================================================
 # ==                                                          ==
@@ -192,8 +187,7 @@ class wifi_server:
 # ==                                                          ==
 # ==============================================================
 # ==============================================================
-if __name__ == "__main__":
-    print(sys.version)
+def basic():
 
     # instantiate the wifi server which automatically
     # sets up a server socket on the specified port.
@@ -212,3 +206,39 @@ if __name__ == "__main__":
                 
         except:
             break
+
+def protocol():
+
+    # instantiate the wifi server which automatically
+    # sets up a server socket on the specified port.
+    s = server(5560)
+
+    mess = None
+
+    # Continue to make connections or send/receive data
+    # until a client requests that the server socket is
+    # closed.
+    while True:
+        try:
+            s.SetupConnection()
+            close_conn = False
+            
+            while not close_conn:
+                mess = s.receive()
+                print("REQ: " + str(mess))
+
+                # determine if the request is asking to disconnect
+                # or shut down the server.
+                if mess == 'E' or mess == 'K': break
+
+                # return the appropriate data to the client.
+                s.respond('{"x" : 2.561, "y" : 1.231, "z" : 4.322}')
+
+            if mess == 'K': break 
+        except Exception as e:
+            print(e)
+            break    
+
+if __name__ == "__main__":
+    print(sys.version)
+    protocol()
