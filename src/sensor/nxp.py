@@ -77,11 +77,25 @@ class sensor:
     '''
     def accelj(self):
         x,y,z = self.fxos.accelerometer
-        return x,y,z
+
+        # round the data before encoding
+        xround = round(x, self.precision)
+        yround = round(y, self.precision)
+        zround = round(z, self.precision)
+
+        # return the data as unicode string
+        return json.dumps({'x' : xround, 'y' : yround, 'z' : zround}) 
 
     def magj(self):
         x,y,z = self.fxos.magnetometer
-        return x,y,z
+
+        # round the data before encoding
+        xround = round(x, self.precision)
+        yround = round(y, self.precision)
+        zround = round(z, self.precision)
+
+        # return the data as unicode string
+        return json.dumps({'x' : xround, 'y' : yround, 'z' : zround}) 
 
     def gyroj(self):
         x,y,z = self.fxas.gyroscope
@@ -91,8 +105,8 @@ class sensor:
         yround = round(y, self.precision)
         zround = round(z, self.precision)
 
-        # encode the data before returning
-        return json.dumps([xround, yround, zround])   
+        # return the data as unicode string
+        return json.dumps({'x' : xround, 'y' : yround, 'z' : zround})   
 
 # +----------+----------+----------+----------+
 # |                 TEST UNIT                 |
@@ -116,9 +130,14 @@ def mainj():
 
     while True:
         gyro = s.gyroj()
+        wifi = gyro.encode('utf-8')
         print(gyro)
 
-        time.sleep(.5)
+        data = json.loads(wifi.decode('utf-8'))
+        x = data.get("x")
+        print(x)
+
+        time.sleep(1)
 
 if __name__ == '__main__':
     mainj()
