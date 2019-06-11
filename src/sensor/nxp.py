@@ -1,8 +1,11 @@
 '''
 CLASS DESCRIPTION:
 This class reads from the accelerometer, gyro, magnetomer information.
+It also includes functions to read json strings with rounded floats of the
+data returned from the sensors.
 '''
 
+import json, math
 import board
 import busio
 import adafruit_fxos8700 as fxoslib
@@ -11,9 +14,10 @@ import time
 
 class sensor:
     
-    def __init__(self):
+    def __init__(self, precision=3):
         self.fxos = None
         self.fxas = None
+        self.precision = precision
 
         # call the setup functions
         (self.fxos, self.fxas) = self.__SetupSensors()
@@ -44,7 +48,7 @@ class sensor:
     
     '''
     SUMMARY:
-    Read x,y,z information from the accelerometer sensor.
+    Read raw x,y,z information from the accelerometer sensor.
 
     RETURN:
     x - (float) X-axis data from whichever sensor is chosen
@@ -59,11 +63,36 @@ class sensor:
         x,y,z = self.fxos.magnetometer
         return x,y,z
 
-    #def gyro(self):
     def gyro(self):
         x,y,z = self.fxas.gyroscope
-        return x,y,z 
+        return x,y,z    
 
+    '''
+    SUMMARY:
+    Read the sensor data, round to some precision, and
+    return the data as a json string.
+
+    RETURN:
+    [XX.XXX, YY.YYY, ZZ.ZZZ]
+    '''
+    def accelj(self):
+        x,y,z = self.fxos.accelerometer
+        return x,y,z
+
+    def magj(self):
+        x,y,z = self.fxos.magnetometer
+        return x,y,z
+
+    def gyroj(self):
+        x,y,z = self.fxas.gyroscope
+
+        # round the data before encoding
+        xround = round(x, self.precision)
+        yround = round(y, self.precision)
+        zround = round(z, self.precision)
+
+        # encode the data before returning
+        return json.dumps([xround, yround, zround])   
 
 # +----------+----------+----------+----------+
 # |                 TEST UNIT                 |
@@ -82,5 +111,14 @@ def main():
 
         time.sleep(.1)
 
+def mainj():
+    s = sensor()
+
+    while True:
+        gyro = s.gyroj()
+        print(gyro)
+
+        time.sleep(.5)
+
 if __name__ == '__main__':
-    main()
+    mainj()
