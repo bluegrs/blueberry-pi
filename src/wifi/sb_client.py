@@ -14,116 +14,159 @@ NOTES:
 As shown in the MAIN() example located at the bottom of the file, 
 the only functions required to run the client after instantiating
 the object is DataTxToHost.
-
-TODO:
-~ The class needs a function to adjust the host IPv4 address.
-~ The data being sent should be read from some external resource
-	such as a FIFO.
 '''
 
-# =====================================================
-# =====================================================
-# ==											     ==
-# ==			   IMPORT DEPENDENCIES
-# ==											     ==
-# =====================================================
-# =====================================================
 import socket
 import sys
+import json
 
-class wifi_client:
+class client: # ||| Protocol Communication Class |||
+        
+    def __init__(self, port):
+        self.host = self.__ip_search()
+        self.port = port
+        self.conn = self.__setup_connection(self.host, self.port)
+
+    # +----------+----------+----------+----------+----------+
+	# |                    PRIVATE METHODS                   |
+	# +----------+----------+----------+----------+----------+
+    ''' SUMMARY: Search all LAN IP's on the port given by the user '''
+    def __ip_search(self):
+        ipv4 = '192.168.1.26'
+        return ipv4
+
+    ''' SUMMARY: Return connection socket to host socket '''
+    def __setup_connection(self, host, port):
+
+        # Set up socket for communicating to server with IPv4, TCP/IP
+        socketInfo = (host, port)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(socketInfo)
+        return sock
+
+	# +----------+----------+----------+----------+----------+
+	# |                     PUBLIC METHODS                   |
+	# +----------+----------+----------+----------+----------+
+
+    '''
+    SUMMARY:
+    User can request accel, gyro, and mag data using the cfg.ACCEL,
+    cfg.GYRO, and cfg.MAG values. The data is returned as a floating
+    point value.
+
+    RETURN:
+    x, y, z tuple containing floating point values from the sensor.
+    '''
+    def request(self, req):
+
+        # send the request to the server as a single byte
+        self.conn.send(req.encode('utf-8'))
+
+        # receive the data from the server
+        msgLength = self.conn.recv(4)
+        data = self.conn.recv(int(msgLength))
+
+        # decode the json.dump
+        decoded = json.loads(data.decode('utf-8'))
+        x = decoded.get("x")
+        y = decoded.get("y")
+        z = decoded.get("z")
+
+        return x,y,z
+
+class wifi_client: # ||| Basic Communication Class |||
 	
-	def __init__(self, port):
-		
-		self.host = '192.168.1.26'
-		self.port = port
-		self.sock_conn = None
-		
-		# Setup the socket from the port number provided
-		self.__SetupClient()
+    def __init__(self, port):
 
-	# =====================================================
-	# =====================================================
-	# ==											     ==
-	# ==			   PRIVATE METHODS
-	# ==											     ==
-	# =====================================================
-	# =====================================================
+        self.host = '192.168.1.26'
+        self.port = port
+        self.sock_conn = None
+
+        # Setup the socket from the port number provided
+        self.__SetupClient()
+
+    # +----------+----------+----------+----------+----------+
+    # |                    PRIVATE METHODS                   |
+    # +----------+----------+----------+----------+----------+
 	
-	# NOTE: Check IP address when switching over to Wi-Fi.
-	# NOTE: Test if this has to be the same port as the one
-	# 		on the server side.
-	def __GetClientSocketInfo(self):
-		return self.host, self.port
+    # NOTE: Check IP address when switching over to Wi-Fi.
+    # NOTE: Test if this has to be the same port as the one
+    # 		on the server side.
+    def __GetClientSocketInfo(self):
+        return self.host, self.port
 
-	# DESC: Set up the client-side socket for TCP packets
-	# RETURNS: socket.socket
-	def __SetupClient(self):
-		socket_data_tuple = self.__GetClientSocketInfo()
+    # DESC: Set up the client-side socket for TCP packets
+    # RETURNS: socket.socket
+    def __SetupClient(self):
+    	socket_data_tuple = self.__GetClientSocketInfo()
+
+    	# Set up a socket for communicating to the server
+    	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    	sock.connect(socket_data_tuple)
+    	print("Connection to server was successful")
+
+    	self.sock_conn = sock
 		
-		# Set up a socket for communicating to the server
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect(socket_data_tuple)
-		print("Connection to server was successful")
-		
-		self.sock_conn = sock
-		
-	# =====================================================
-	# =====================================================
-	# ==											     ==
-	# ==			     PUBLIC METHODS
-	# ==											     ==
-	# =====================================================
-	# =====================================================
+	# +----------+----------+----------+----------+----------+
+	# |                     PUBLIC METHODS                   |
+	# +----------+----------+----------+----------+----------+
 
 	# DESC: Decodes the command to be sent to the server
 	#		and returns the response.
 	# RETURNS: boolean to break or not
-	def DataTxToHost(self, message):
-		
-		# Determine if the data transfer should continue or 
-		# if the socket should close down
-		closeConnection = False
-		command = message.split(' ', 1)[0]
-		
-		# Decode the command ------------------
-		# Send the EXIT request to other end
-		# and exit the connection.
-		# Send KILL command to shut down the server.
-		# Same behavior on client side.
-		if command == 'EXIT' or command == 'KILL':
-			closeConnection = True
-			
-		# If other command, just send the command
-		# and wait for the response.
-		self.sock_conn.send(str.encode(message))
-		if not closeConnection:
-			reply = self.sock_conn.recv(1024)
-			print(reply.decode('utf-8'))
-		
-		# If the client requests to disconnect using the 
-		# EXIT or KILL functions, close the server
-		else:
-			self.sock_conn.close()
-		
-		return closeConnection
+    def DataTxToHost(self, message):
 
-# =====================================================
-# =====================================================
-# ==											     ==
-# ==			     STAND ALONE
-# ==											     ==
-# =====================================================
-# =====================================================
+    	# Determine if the data transfer should continue or
+    	# if the socket should close down
+    	closeConnection = False
+    	command = message.split(' ', 1)[0]
+
+    	# Decode the command ------------------
+    	# Send the EXIT request to other end
+    	# and exit the connection.
+    	# Send KILL command to shut down the server.
+    	# Same behavior on client side.
+    	if command == 'EXIT' or command == 'KILL':
+    		closeConnection = True
+
+    	# If other command, just send the command
+    	# and wait for the response.
+    	self.sock_conn.send(str.encode(message))
+    	if not closeConnection:
+    		reply = self.sock_conn.recv(1024)
+    		print(reply.decode('utf-8'))
+
+    	# If the client requests to disconnect using the
+    	# EXIT or KILL functions, close the server
+    	else:
+    		self.sock_conn.close()
+
+    	return closeConnection
+
+# ||| STANDALONE TEST MODULES |||
+def basic():
+        
+    client = wifi_client(5560)
+    ConnectionClosed = False
+
+    while not ConnectionClosed:
+        message = input("Enter your message: ")
+        ConnectionClosed = client.DataTxToHost(message)
+
+    print("Socket closed..")
+
+def protocol():
+
+    c = client(5560)
+
+    while True:
+        req = '0'
+        x,y,z = c.request(req)
+        print("X: " + str(x))
+        print("Y: " + str(y))
+        print("Z: " + str(z))
+
 if __name__ == "__main__":
+    print(sys.version)
+    protocol()
 
-	print(sys.version)
-
-	client = wifi_client(5560)
-	ConnectionClosed = False
-		
-	while not ConnectionClosed:
-		message = input("Enter your message: ")
-		ConnectionClosed = client.DataTxToHost(message)
-	
-	print("Socket closed..")
