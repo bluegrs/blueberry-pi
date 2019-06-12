@@ -19,29 +19,50 @@ the object is DataTxToHost.
 import socket
 import sys
 import json
+import subprocess 
 
 class client: # ||| Protocol Communication Class |||
         
-    def __init__(self, port):
-        self.host = self.__ip_search()
-        self.port = port
-        self.conn = self.__setup_connection(self.host, self.port)
+    def __init__(self, port, timeout):
+        self.conn = self.__setup_connection(port, timeout)
 
     # +----------+----------+----------+----------+----------+
 	# |                    PRIVATE METHODS                   |
 	# +----------+----------+----------+----------+----------+
-    ''' SUMMARY: Search all LAN IP's on the port given by the user '''
-    def __ip_search(self):
-        ipv4 = '192.168.1.26'
-        return ipv4
-
-    ''' SUMMARY: Return connection socket to host socket '''
-    def __setup_connection(self, host, port):
-
-        # Set up socket for communicating to server with IPv4, TCP/IP
-        socketInfo = (host, port)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect(socketInfo)
+    
+    ''' 
+    SUMMARY: 
+    Search all LAN IPs for a valid connection on the user defined
+    port. Using IPv4 address family and TCP/IP.
+    
+    RETURN:
+    conn - (socket.socket) connection socket to host.
+    '''
+    def __setup_connection(self, port, timeout):
+    
+        sock = None
+        lan = "192.168.1."
+  
+        # Test all 256 LAN IPs and return the socket if
+        # a valid connection is made.
+        for ping in range(0,255): 
+            address = lan + str(ping) 
+            
+            # Set up socket for communicating to server with IPv4, TCP/IP
+            socketInfo = (address, port)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            
+            # Try to connect to the port at this address. If a timeout
+            # occurs, this was not the server's IP.
+            try:
+                sock.connect((address, port)) # Timeout reset
+                sock.settimeout(None)
+                break
+                
+            except:
+                print("Searching for connection..")
+                
         return sock
 
 	# +----------+----------+----------+----------+----------+
@@ -157,7 +178,7 @@ def basic():
 
 def protocol():
 
-    c = client(5560)
+    c = client(5560, .01)
 
     while True:
         req = '0'
