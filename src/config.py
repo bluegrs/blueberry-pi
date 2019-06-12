@@ -8,6 +8,7 @@ VERSION = 'nonthreaded'             # (string) threaded, nonthreaded
 # |                   WI-FI                   |
 # +----------+----------+----------+----------+
 WIFI_PORT = 5560                    # (int) 1024 to 49151
+TIMEOUT = .01
 
 # +----------+----------+----------+----------+
 # |                    NXP                    |
