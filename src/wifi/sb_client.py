@@ -25,6 +25,9 @@ class client: # ||| Protocol Communication Class |||
         
     def __init__(self, port, timeout):
         self.conn = self.__setup_connection(port, timeout)
+        
+    def __exit__(self):
+        self.close()
 
     # +----------+----------+----------+----------+----------+
 	# |                    PRIVATE METHODS                   |
@@ -61,7 +64,9 @@ class client: # ||| Protocol Communication Class |||
                 break
                 
             except:
-                print("Searching for connection..")
+                # Only update the user occasionally
+                if ping % 100 == 0:
+                    print("Searching for connection..")
                 
         return sock
 
@@ -94,6 +99,14 @@ class client: # ||| Protocol Communication Class |||
         z = decoded.get("z")
 
         return x,y,z
+        
+    ''' SUMMARY: Close the connection socket made. '''
+    def close(self):
+        try:
+            self.sock_conn.close()
+            print("Connection closed.") 
+        except:
+            print("No connection to close.")
 
 class wifi_client: # ||| Basic Communication Class |||
 	
