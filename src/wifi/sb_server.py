@@ -1,13 +1,8 @@
 '''
 CLASS DESCRIPTION:
 The server can accept 1 client connection and send/receive
-simple string messages using TCP/IP. The client can choose to
+string messages using TCP/IP. The client can choose to
 disconnect at any time.
-
-NOTES:
-As shown in the MAIN() example located at the bottom of the file,
-the only functions required to setup the server are SetupConnection
-and DataRxFromClient.
 '''
 
 import socket
@@ -42,6 +37,7 @@ class wifi_server:
         # AF_INET = address family, APv4 requires (host, port) tuple
         # SOCK_STREAM = socket expects TCP packets
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         print("Socket created.")
 
         # Bind the socket to an address so the server
@@ -165,6 +161,26 @@ class server(wifi_server):
 
     def __init__(self, port):
         wifi_server.__init__(self, port)
+        
+    def __exit__(self):
+        self.closeConnection()
+        self.closeServer()
+        
+    '''SUMMARY: Try to close the server socket. '''
+    def closeConnection(self):
+        try:
+            self.sock_conn.close()
+            print("Connection socket closed.")
+        except:
+            print("No connection socket to close.")
+            
+    ''' SUMMARY: Try to close the connection socket. '''
+    def closeServer(self):
+        try:
+            self.sock_server.close()
+            print("Server socket closed.")
+        except:
+            print("No server socket to close.")
 
     ''' SUMMARY: Receive a request from the user - cfg.ACCEL, cfg.GRYO, cfg.MAG'''
     def receive(self):
