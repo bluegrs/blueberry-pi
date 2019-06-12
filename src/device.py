@@ -7,7 +7,7 @@ client to request another transfer, pull more data from the sensor.
 
 import sys
 import config as cfg
-from wifi.sb_server import wifi_server as server
+from wifi.sb_server import server
 from sensor.nxp import sensor as sensor_if
 
 # +----------+----------+----------+----------+
@@ -16,30 +16,64 @@ from sensor.nxp import sensor as sensor_if
 def main_single():
     print("Running Blueberry-Pi (NON-THREADED).")
     
-    wifi = server(cfg.WIFI_PORT)
-    sensor = sensor_if()
+    # object construction
+    wifi    = server(cfg.WIFI_PORT)
+    sensor  = sensor_if()
+    
+    serverOpen = True
 
-    while True:
+    # Continue to make connections or send/receive data
+    # until a client requests that the server socket is
+    # closed.
+    while serverOpen:
 
         # Always listen for a connection to the client.
         try:
             wifi.SetupConnection()
-            connOpen = True
 
-            while connOpen:
-
-                # Pull the data from the sensors
-                accel_x, accel_y, accel_z = sensor.accel()
-                mag_x, mag_y, mag_z = sensor.mag()
-                gyro_x, gyro_y, gyro_z = sensor.gyro()
-
-                # Send the data to the client
-                connOpen = wifi.DataRxFromClient()
+            while True:
+                
+                # Wait for a request from the client.
+                mess = str(wifi.receive())
+                print(mess)
+                
+                # If kill or exit, skip the rest of the loop
+                if mess == cfg.EXIT:
+                    notification = "EXIT CONNECTION"
+                    wifi.closeConnection()
+                    break
+                    
+                elif mess == cfg.KILL:
+                    notification = "KILL SERVER"
+                    wifi.closeConnection()
+                    wifi.closeServer()
+                    serverOpen = False
+                    break
+                
+                # Decode request from the client.
+                if mess == cfg.ACCEL:
+                    notification = "Accel"
+                    data = sensor.accelj()
+                    
+                elif mess == cfg.MAG:
+                    notification = "Mag"
+                    data = sensor.magj()
+                    
+                elif mess == cfg.GYRO:
+                    notification = "Gyro"
+                    data = sensor.gyroj()
+                    
+                # Send teh data as a json.dump string
+                wifi.respond(data)
+                
+                # Print out the client request.
+                print(notification)
 
         except:
-            print("Unable to connect to client.")
             print("Closing server.")
-            break
+            wifi.closeServer()
+            serverOpen = False
+
             
         
 # +----------+----------+----------+----------+
