@@ -15,11 +15,11 @@ from sensor.nxp import sensor as sensor_if
 # +----------+----------+----------+----------+
 def main_single():
     print("Running Blueberry-Pi (NON-THREADED).")
-    
+
     # object construction
     wifi    = server(cfg.WIFI_PORT)
     sensor  = sensor_if()
-    
+
     serverOpen = True
 
     # Continue to make connections or send/receive data
@@ -32,40 +32,45 @@ def main_single():
             wifi.SetupConnection()
 
             while True:
-                
+
                 # Wait for a request from the client.
                 mess = str(wifi.receive())
                 print(mess)
-                
+
                 # If kill or exit, skip the rest of the loop
                 if mess == cfg.EXIT:
                     notification = "EXIT CONNECTION"
                     wifi.closeConnection()
                     break
-                    
+
                 elif mess == cfg.KILL:
                     notification = "KILL SERVER"
                     wifi.closeConnection()
                     wifi.closeServer()
                     serverOpen = False
                     break
-                
+
                 # Decode request from the client.
                 if mess == cfg.ACCEL:
                     notification = "Accel"
                     data = sensor.accelj()
-                    
+
                 elif mess == cfg.MAG:
                     notification = "Mag"
                     data = sensor.magj()
-                    
+
                 elif mess == cfg.GYRO:
                     notification = "Gyro"
-                    data = sensor.gyroj()
+                    data = sensor.gyro
                     
-                # Send teh data as a json.dump string
+                else:
+                    print("Unknown command: " + mess)
+                    continue
+
+                # Send the data as a json.dump string
+                print("Responding with :" + data)
                 wifi.respond(data)
-                
+
                 # Print out the client request.
                 print(notification)
 
@@ -74,8 +79,7 @@ def main_single():
             wifi.closeServer()
             serverOpen = False
 
-            
-        
+
 # +----------+----------+----------+----------+
 # |               MAIN (THREADED)             |
 # +----------+----------+----------+----------+
@@ -83,7 +87,7 @@ def main_threaded():
     print("Running Blueberry-Pi (THREADED).")
 
 if __name__ == '__main__':
-    
+
     # default to running the non-threaded version
     # unless the user requests to use the threaded
     # version in the configs file.
