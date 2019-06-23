@@ -61,20 +61,21 @@ def main_single():
 
                 elif mess == cfg.GYRO:
                     notification = "Gyro"
-                    data = sensor.gyro
+                    data = sensor.gyroj()
                     
                 else:
                     print("Unknown command: " + mess)
                     continue
+                
+                # Print out the client request.
+                print(notification)
 
                 # Send the data as a json.dump string
                 print("Responding with :" + data)
                 wifi.respond(data)
 
-                # Print out the client request.
-                print(notification)
-
-        except:
+        except Exception as e:
+            print(e)
             print("Closing server.")
             wifi.closeServer()
             serverOpen = False
