@@ -60,6 +60,7 @@ public class SocketResource : MonoBehaviour
     // socket variables
     private TcpClient socketConnection;
     private Thread clientReceiveThread;
+    private Thread parserThread;
 
     private int port;   // remote host port to make connection on
     private bool connected;
@@ -72,6 +73,9 @@ public class SocketResource : MonoBehaviour
     private string mag;
     private string exit;
     private string kill;
+
+    // json related parameters
+    SensorData jsonDataObject;
 
     /*
      *  +----------+----------+----------+
@@ -108,6 +112,13 @@ public class SocketResource : MonoBehaviour
         exit    = Configs.EXIT;
         kill    = Configs.KILL;
 
+        // json related
+        jsonDataObject = new SensorData();
+
+        // Start trying to make a connection to the server
+        // and initialize the background thread that parses the 
+        // json string queue.
+        InitParserThread();
         StartCoroutine(ConnectToServerCoroutine());
     }
 
@@ -212,6 +223,7 @@ public class SocketResource : MonoBehaviour
             socketConnection = new TcpClient(serverIP, port);
             Byte[] bytes = new Byte[1024];
             int queueNum = 0;
+
             while (true)
             {
                 // Get a stream object for reading 				
@@ -269,6 +281,74 @@ public class SocketResource : MonoBehaviour
     }
 
     /*
+     * 
+     * SUMMARY: 
+     * Initialize the parser thread in the background.
+     */
+    private void InitParserThread()
+    {
+        // Start up the parser thread
+        parserThread = new Thread(new ThreadStart(ParserThread));
+        parserThread.IsBackground = true;
+        parserThread.Start();
+    }
+
+     /*
+      *  SUMMARY:
+      *  Thread to parse all buffer data to place into the sensor Queues.
+      */
+     private void ParserThread()
+     {
+        int sensorIndex = 0;
+
+        while (true)
+        {
+            // only try storing the next sensor's data if the current
+            // sensor's data successfully parsed.
+            if (Parse(sensorIndex))
+                sensorIndex++;
+
+            // reset the sensor index to 0 if it goes past
+            if (sensorIndex == 3)
+                sensorIndex = 0;
+        }
+     }
+
+    /*
+     *  SUMMARY:
+     *  Dequeue and parse the data stored in the ParsedQueue for each sensor and 
+     *  store into the SensorQueue arrays in floating point format.
+     *  
+     *  RETURN:
+     *  newDataReceived - (bool) True if new data was parsed and stored into the data queue.
+     */
+     private bool Parse(int sensorIndex)
+     {
+        bool newDataReceived = false;
+
+        if (sensorDataToParse[sensorIndex].Count > 0)
+        {
+            // parse the string and store the data into the jsonDataObject instance.
+            string parseMe = sensorDataToParse[sensorIndex].Dequeue();
+            JsonUtility.FromJsonOverwrite(parseMe, jsonDataObject);
+
+            // Write the data out to console for debugging.
+            Debug.Log("X: " + jsonDataObject.x);
+            Debug.Log("Y: " + jsonDataObject.y);
+            Debug.Log("Z: " + jsonDataObject.z);
+
+            // store the float values to the sensor data queues
+            sensorDataQueues[sensorIndex, (int)Sensors.X].Enqueue(jsonDataObject.x);
+            sensorDataQueues[sensorIndex, (int)Sensors.Y].Enqueue(jsonDataObject.y);
+            sensorDataQueues[sensorIndex, (int)Sensors.Z].Enqueue(jsonDataObject.z);
+
+            newDataReceived = true;
+        }
+
+        return newDataReceived;
+     }
+
+    /*
      * This function sends the sensor requests to the server and waits for 
      * a response before requesting the next sensor value.
      */
@@ -277,10 +357,9 @@ public class SocketResource : MonoBehaviour
         // Request sensor data
         if (handshake == Handshake.READY_TO_SEND)
         {
-            Debug.Log("Sending " + accel);
-            Send(accel);      // accelerometer
-            //Send("1");      // magnetometer
-            //Send("2");      // gyroscope
+            Send(accel);   
+            Send(mag);      
+            Send(gyro);     
             //handshake = Handshake.READY_TO_RECV;  // wait for the listener's handshake
         }
      }

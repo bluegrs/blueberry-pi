@@ -24,4 +24,23 @@ namespace Common
         Y = 1,
         Z = 2
     }
+
+    /*
+     *  SUMMARY:
+     *  This class is used to break out data in JSON strings received from 
+     *  the socket in SocketResource.
+     */
+    public class SensorData
+    {
+        public float x;
+        public float y;
+        public float z;
+
+        public SensorData()
+        {
+            x = 0f;
+            y = 0f;
+            z = 0f;
+        }
+    }
 }
