@@ -12,6 +12,8 @@
  * 
  * 6/18/2019:   Script searches for LAN connection on configured port. Cleanup functions allow the server 
  *              to continue operating instead of crashing.
+ *              
+ * 6/22/2019:   Store values into Queue.
  * 
  * TODO -----------------------------------------------------------------------------------------------
  *  
@@ -28,32 +30,116 @@ using System.Text;
 using System.Threading;
 using UnityEngine;
 
+// custom namespaces
+using Common;
+using Configurations;
+
 public class SocketResource : MonoBehaviour
 {
+    /*
+     *  +----------+----------+----------+
+     *  |           TYPEDEFS             |
+     *  +----------+----------+----------+
+     */
+    private enum Handshake
+    {
+        READY_TO_SEND = 0,
+        READY_TO_RECV = 1
+    }
+
+    /*
+     *  +----------+----------+----------+
+     *  |           PROPERTIES           |
+     *  +----------+----------+----------+
+     */
+
+    // Data received from the device.
+    private Queue<String>[] sensorDataToParse;      // holds the strings of received data from the device in json.dump format
+    public Queue<float>[,] sensorDataQueues;    // 2D array of queues for holding the float data
+
+    // socket variables
     private TcpClient socketConnection;
     private Thread clientReceiveThread;
 
+    private int port;   // remote host port to make connection on
+    private bool connected;
     private string serverIP;
-    int port;
+    private Handshake handshake; // synchronization between sensor request and listener thread
 
-    // Use this for initialization 	
+    // messages to send to the server
+    private string accel;
+    private string gyro;
+    private string mag;
+    private string exit;
+    private string kill;
+
+    /*
+     *  +----------+----------+----------+
+     *  |            METHODS             |
+     *  +----------+----------+----------+
+     */
     void Start()
     {
-        // variable initializations
-        serverIP = "192.168.1.";
-        port = 5560;
+        // initialize the buffers for parsing the received data
+        sensorDataToParse = new Queue<string>[3];
+        for (int i = 0; i < sensorDataToParse.GetLength(0); i++)
+        {
+            sensorDataToParse[i] = new Queue<string>();
+        }
 
-        FindServerIP();         // before making a connection to the server, find its IP.
-        ConnectToTcpServer();   // make a socket connection to the server.
+        // initialize each of the received data queues in the 2D array of queues.
+        sensorDataQueues = new Queue<float>[3, 3]; // 3 sensors, 3 axes each
+        for (int row = 0; row < sensorDataQueues.GetLength(0); row++)
+        {
+            for (int col = 0; col < sensorDataQueues.GetLength(1); col++)
+            {
+                sensorDataQueues[row, col] = new Queue<float>();
+            }
+        }
+
+        connected = false;
+        serverIP = "192.168.1.";    // the rest of the address will be defined in the FindServerIP function
+        port = Configs.WIFI_PORT;
+
+        // set the messages from the configurations filev
+        accel   = Configs.ACCEL;
+        gyro    = Configs.GYRO;
+        mag     = Configs.MAG;
+        exit    = Configs.EXIT;
+        kill    = Configs.KILL;
+
+        StartCoroutine(ConnectToServerCoroutine());
     }
 
-    // Update is called once per frame
     void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
+    {   
+        // Once the ConnectToServerCoroutine is successful, sending requests to the server is safe.
+        if (connected)
         {
-            Send("0");
+            SendSensorRequests();
         }
+    }
+
+    /*
+     *  If there is no connection to the server, try to make a connection. 
+     *  Once a connection is made, stop the coroutine.
+     */
+    private IEnumerator ConnectToServerCoroutine()
+    {
+        // before making a connection to the server, find its IP address.
+        while (!FindServerIP())
+        {
+            yield return new WaitForSeconds(.5f);
+        }
+
+        // Wait for the server to stabilize from client disconnection before trying to reconnect.
+        yield return new WaitForSeconds(.5f);
+        Debug.Log("Making connection to the IP address: " + serverIP);
+        ConnectToTcpServer();                   // make a socket connection to the server.
+
+        Debug.Log("Connected to the server correctly");
+        handshake = Handshake.READY_TO_SEND;    // enable sending sensor requests to the server.  
+        connected = true;                       // allow the client to start sending requests.
     }
 
     /*
@@ -76,10 +162,13 @@ public class SocketResource : MonoBehaviour
     }
 
     /*
-     * SUMMARY: Search for the correct server IP and assign it to the global.
-     */
-     private void FindServerIP()
-     {
+    * SUMMARY: Search for the correct server IP and assign it to the global.
+    * RETURN: true = connection was made, false = connection was not found
+    */
+    private bool FindServerIP()
+    {
+        bool connectionSuccessful = false;
+
         // Test all local area network (LAN) IPs
         for (int ping = 0; ping < 255; ping++)
         {
@@ -90,16 +179,16 @@ public class SocketResource : MonoBehaviour
             {
                 // Try connecting to the IP with a timeout of .05 seconds
                 socketConnection = new TcpClient();
-                if (!socketConnection.ConnectAsync(pingIP, port).Wait(100))
+                if (!socketConnection.ConnectAsync(pingIP, port).Wait(150))
                 {
-                    continue; // Connection failure
+                    continue; // No connection at this address
                 }
 
                 // allows reconnection for synchronous in ListenForData
-                Send("E");
-                socketConnection.GetStream().Close();
-                socketConnection.Close();
+                Send(exit);                 // tell the server to close connection
+                socketConnection.Close();   // close connection on client side
                 serverIP = pingIP;
+                connectionSuccessful = true;
                 break;
             }
             catch
@@ -107,7 +196,9 @@ public class SocketResource : MonoBehaviour
                 Debug.Log("Connection Failure");
             }
         }
-     }
+
+        return connectionSuccessful;
+    }
 
     /*
      *  SUMMARY:
@@ -118,7 +209,7 @@ public class SocketResource : MonoBehaviour
         try
         {
             // Tries to create a synchronous tcp socket
-            socketConnection = new TcpClient(serverIP, 5560);
+            socketConnection = new TcpClient(serverIP, port);
             Byte[] bytes = new Byte[1024];
             while (true)
             {
@@ -126,6 +217,7 @@ public class SocketResource : MonoBehaviour
                 using (NetworkStream stream = socketConnection.GetStream())
                 {
                     int length;
+                    int queueNum = 0;
 
                     // Read incomming stream into byte arrary. 					
                     while ((length = stream.Read(bytes, 0, bytes.Length)) != 0)
@@ -136,7 +228,26 @@ public class SocketResource : MonoBehaviour
                         // Convert byte array to string message. 						
                         // string serverMessage = Encoding.ASCII.GetString(incommingData);
                         string serverMessage = Encoding.UTF8.GetString(incommingData);
-                        Debug.Log("server message received as: " + serverMessage);
+
+                        // Send the data to the string queue to be parsed and spread out to 
+                        // the individual sensor data queues.
+                        Debug.Log("SERVER MESSAGE: " + serverMessage + " saving in buffer #" + queueNum);
+                        sensorDataToParse[queueNum].Enqueue(serverMessage);
+
+                        // If received data has already been sent to this sensor, go to the 
+                        // next sensor and store the received strings into that. If all sensors
+                        // have been filled, break out of the loop and  allow the client to send
+                        // another request.
+                        if (queueNum == 2)
+                        {
+                            Debug.Log("Received data for all sensors. Resetting to first buffer.");
+                            queueNum = 0;
+                        }
+                        else
+                        {
+                            Debug.Log("Going to the next sensor for parsing data");
+                            queueNum++;
+                        }
                     }
                 }
             }
@@ -146,6 +257,23 @@ public class SocketResource : MonoBehaviour
             Debug.Log("Socket exception: " + socketException);
         }
     }
+
+    /*
+     * This function sends the sensor requests to the server and waits for 
+     * a response before requesting the next sensor value.
+     */
+    private void SendSensorRequests()
+     {
+        // Request sensor data
+        if (handshake == Handshake.READY_TO_SEND)
+        {
+            Debug.Log("Sending " + accel);
+            Send(accel);      // accelerometer
+            //Send("1");      // magnetometer
+            //Send("2");      // gyroscope
+            //handshake = Handshake.READY_TO_RECV;  // wait for the listener's handshake
+        }
+     }
 
     /*
      * SUMMARY:
@@ -190,7 +318,7 @@ public class SocketResource : MonoBehaviour
         // EXIT signals server that the connection socket should be closed.
         try
         {
-            Send("E");
+            Send(exit);
         }
         catch
         {
