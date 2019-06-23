@@ -211,24 +211,34 @@ public class SocketResource : MonoBehaviour
             // Tries to create a synchronous tcp socket
             socketConnection = new TcpClient(serverIP, port);
             Byte[] bytes = new Byte[1024];
+            int queueNum = 0;
             while (true)
             {
                 // Get a stream object for reading 				
                 using (NetworkStream stream = socketConnection.GetStream())
                 {
                     int length;
-                    int queueNum = 0;
 
-                    // Read incomming stream into byte arrary. 					
-                    while ((length = stream.Read(bytes, 0, bytes.Length)) != 0)
+                    // Read incomming stream into byte arrary. The first portion of the message
+                    // is the length that should be read for one sensor.
+                    while ((length = stream.Read(bytes, 0, 2)) != 0)
                     {
-                        var incommingData = new byte[length];
-                        Array.Copy(bytes, 0, incommingData, 0, length);
+                        var incomingData = new byte[length];
+                        Array.Copy(bytes, 0, incomingData, 0, length);
+                        string serverMessageLength = Encoding.UTF8.GetString(incomingData); // Convert byte array to string message. 
 
-                        // Convert byte array to string message. 						
-                        // string serverMessage = Encoding.ASCII.GetString(incommingData);
-                        string serverMessage = Encoding.UTF8.GetString(incommingData);
+                        // convert the received message length to an integer value
+                        Debug.Log("Length to parse: " + serverMessageLength);
+                        int messageLength = Int32.Parse(serverMessageLength);
+                        Debug.Log("Length parsed: " + messageLength);
 
+                        // Read in the rest of the message based on the length specified
+
+                        int jsonLength = stream.Read(bytes, 0, messageLength);
+                        var jsonMessage = new byte[jsonLength];
+                        Array.Copy(bytes, 0, jsonMessage, 0, jsonLength);
+                        string serverMessage = Encoding.UTF8.GetString(jsonMessage); // Convert byte array to string message. 
+                        
                         // Send the data to the string queue to be parsed and spread out to 
                         // the individual sensor data queues.
                         Debug.Log("SERVER MESSAGE: " + serverMessage + " saving in buffer #" + queueNum);
